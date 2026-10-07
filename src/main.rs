@@ -45,8 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .connect(&database_url)
                 .await?;
 
-    sqlx::migrate!().run(&db).await?;
-
     let state = AppState { db };
 
     let app = Router::new()
