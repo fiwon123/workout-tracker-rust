@@ -17,7 +17,7 @@ services:
 
   migrate:
     build: .
-    command: ["workout-tracker-rust", "migrate"]
+    command: ["migrate"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-workout}:${POSTGRES_PASSWORD:-workout_dev_password}@db:5432/${POSTGRES_DB:-workout_tracker}
     depends_on:
