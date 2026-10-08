@@ -3,6 +3,8 @@ use serde::Serialize;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_subscriber::EnvFilter;
 
+mod password;
+
 #[derive(Clone)]
 struct AppState{
     db:PgPool,
