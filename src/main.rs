@@ -5,6 +5,7 @@ use tracing_subscriber::EnvFilter;
 
 mod auth;
 mod routes;
+mod error;
 
 #[derive(Clone)]
 pub(crate )struct AppState{

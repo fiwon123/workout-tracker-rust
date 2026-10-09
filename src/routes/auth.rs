@@ -2,12 +2,11 @@ use axum::{
     extract::{Extension, State},
     http::StatusCode,
     middleware::from_fn_with_state,
-    response::{IntoResponse, Response},
     routing::post,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use crate::error::ApiError;
 
 use crate::auth::{middleware::require_auth, middleware::AuthUser, password, token};
 use crate::AppState;
@@ -23,29 +22,7 @@ pub struct AuthResponse {
     pub token: String,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum ApiError {
-    #[error("{0}")]
-    Validation(String),
-    #[error("invalid email or password")]
-    InvalidCredentials,
-    #[error("email already registered")]
-    EmailTaken,
-    #[error("internal error")]
-    Internal,
-}
 
-impl IntoResponse for ApiError{
-    fn into_response(self) -> Response {
-        let status = match &self {
-            ApiError::Validation(_) => StatusCode::BAD_REQUEST,
-            ApiError::InvalidCredentials => StatusCode::UNAUTHORIZED,
-            ApiError::EmailTaken => StatusCode::CONFLICT,
-            ApiError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        (status, Json(json!({"error": self.to_string()}))).into_response()
-    }
-}
 
 fn validate(email: &str, password: &str) -> Result<(), ApiError> {
     if !email.contains('@') || email.len() < 5 {
