@@ -5,6 +5,7 @@ use axum::{
 };
 use serde_json::json;
 
+
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
     #[error("{0}")]
@@ -17,6 +18,8 @@ pub enum ApiError {
     NotFound,
     #[error("internal error")]
     Internal,
+    #[error("workout already completed")]
+    AlreadyCompleted,
 }
 
 impl IntoResponse for ApiError{
@@ -27,6 +30,7 @@ impl IntoResponse for ApiError{
             ApiError::EmailTaken => StatusCode::CONFLICT,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::AlreadyCompleted => StatusCode::CONFLICT,
         };
         (status, Json(json!({"error": self.to_string()}))).into_response()
     }
