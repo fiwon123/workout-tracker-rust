@@ -7,8 +7,8 @@ mod auth;
 mod routes;
 
 #[derive(Clone)]
-struct AppState{
-    db:PgPool,
+pub(crate )struct AppState{
+    pub(crate) db:PgPool,
 }
 
 #[derive(Serialize)]
