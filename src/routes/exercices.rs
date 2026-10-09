@@ -1,0 +1,50 @@
+use axum::{
+    extract::{Query, State},
+    routing::get,
+    Json, Router,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{error::ApiError, AppState};
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct Exercise {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub muscle_group: String,
+}
+
+#[derive(Deserialize)]
+pub struct ExerciseFilter{
+    pub category:Option<String>,
+    pub muscle_group: Option<String>,
+}
+
+pub async fn list_exercises(
+    State(state): State<AppState>,
+    Query(filter): Query<ExerciseFilter>,
+) -> Result<Json<Vec<Exercise>>, ApiError> {
+    let exercises = sqlx::query_as::<_, Exercise>(
+    "SELECT id, name, description, category, muscle_group
+         FROM exercises
+         WHERE ($1::text IS NULL OR category = $1)
+            AND ($2::text IS NULL OR muscle_group = $2)
+         ORDER BY name",
+    )
+    .bind(filter.category)
+    .bind(filter.muscle_group)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("list exercises failed: {e}");
+        ApiError::Internal
+    })?;
+
+    Ok(Json(exercises))
+}
+
+pub fn router() -> Router<AppState> {
+    Router::new().route("/", get(list_exercises))
+}

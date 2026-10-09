@@ -54,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
                 .route("/health", get(health))
                 .nest("/auth", routes::auth::router(state.clone()))
+                .nest("/exercises", routes::exercices::router())
                 .with_state(state);
 
     let listen_addr = std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
