@@ -254,20 +254,34 @@ pub async fn complete(
     Extension(auth): Extension<AuthUser>,
     Path(id): Path<i32>,
 ) -> Result<Json<Workout>, ApiError> {
-        let workout = sqlx::query_as::<_, Workout>(
-            "UPDATE workouts
-            SET status = 'completed', completed_at = now()
-            WHERE id = $1 AND user_id = $2
-            RETURNING id, name, scheduled_at, status, comments, created_at, completed_at",
-        )
-        .bind(id)
-        .bind(auth.user_id)
-        .fetch_optional(&state.db)
-        .await
-        .map_err(internal)?
-        .ok_or(ApiError::NotFound)?;
+    let updated = sqlx::query_as::<_, Workout>(
+        "UPDATE workouts
+         SET status='completed', completed_at=now()
+         WHERE id=$1 AND user_id=$2 AND status='pending'
+         RETURNING id,name,scheduled_at,status,comments,created_at,completed_at",
+    )
+    .bind(id)
+    .bind(auth.user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(internal)?;
 
-    Ok(Json(workout))
+    if let Some(w) = updated {
+        return Ok(Json(w));
+    }
+
+    let existing: Option<String> =
+        sqlx::query_scalar("SELECT status FROM workouts WHERE id=$1 AND user_id=$2")
+            .bind(id)
+            .bind(auth.user_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(internal)?;
+
+    match existing {
+        None => Err(ApiError::NotFound),
+        Some(_) => Err(ApiError::AlreadyCompleted),
+    }
 }
 
 pub async fn delete_one(
@@ -318,4 +332,44 @@ fn validate_status(status: &Option<String>) -> Result<(), ApiError> {
         None | Some("pending") | Some("completed") => Ok(()),
         Some(_) => Err(ApiError::Validation("invalid status filter".into())),
     }
+}
+
+async fn ensure_exercises_exist(
+    conn: &mut sqlx::PgConnection,
+    exercises: &[WorkoutExerciseInput],
+) -> Result<(), ApiError> {
+    let ids: Vec<i32> = exercises.iter().map(|e| e.exercise_id).collect();
+    let found: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM exercises WHERE id = ANY($1)")
+        .bind(&ids)
+        .fetch_one(conn)
+        .await
+        .map_err(internal)?;
+    if found != ids.len() as i64 {
+        return Err(ApiError::Validation("unknown exercise_id".into()));
+    }
+    Ok(())
+}
+
+async fn insert_workout_exercises(
+    conn: &mut sqlx::PgConnection,
+    workout_id: i32,
+    exercises: &[WorkoutExerciseInput],
+) -> Result<(), ApiError> {
+    for (i, ex) in exercises.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO workout_exercises
+                (workout_id, exercise_id, position, target_sets, target_reps, target_weight)
+             VALUES ($1,$2,$3,$4,$5,$6)",
+        )
+        .bind(workout_id)
+        .bind(ex.exercise_id)
+        .bind(ex.position.unwrap_or(i as i32))
+        .bind(ex.sets)
+        .bind(ex.reps)
+        .bind(ex.weight)
+        .execute(&mut *conn)
+        .await
+        .map_err(internal)?;
+    }
+    Ok(())
 }
