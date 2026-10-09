@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2024"
 default-run = "workout-tracker-rust"
 
-[dependencies]
+[dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+
+[dependencies]
+utoipa = { version = "5", features = ["axum_extras", "chrono"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
 argon2 = "0.6.0"
 axum = "0.8.9"
 chrono = { version = "0.4.45", features = ["serde"] }
