@@ -297,3 +297,25 @@ pub fn router(state: AppState) -> Router<AppState> {
         .route("/{id}/complete", post(complete))
         .layer(from_fn_with_state(state, require_auth))
 }
+
+fn validate_exercises(exercises: &[WorkoutExerciseInput]) -> Result<(), ApiError> {
+    if exercises.is_empty() {
+        return Err(ApiError::Validation("at least one exercise is required".into()));
+    }
+    for ex in exercises {
+        if ex.sets <= 0 || ex.reps <= 0 {
+            return Err(ApiError::Validation("sets and reps must be positive".into()));
+        }
+        if !ex.weight.is_finite() || ex.weight < 0.0 {
+            return Err(ApiError::Validation("weight must be >= 0".into()));
+        }
+    }
+    Ok(())
+}
+
+fn validate_status(status: &Option<String>) -> Result<(), ApiError> {
+    match status.as_deref() {
+        None | Some("pending") | Some("completed") => Ok(()),
+        Some(_) => Err(ApiError::Validation("invalid status filter".into())),
+    }
+}
