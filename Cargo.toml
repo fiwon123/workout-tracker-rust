@@ -5,6 +5,8 @@ edition = "2024"
 default-run = "workout-tracker-rust"
 
 [dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 argon2 = "0.6.0"
 axum = "0.8.9"
 chrono = { version = "0.4.45", features = ["serde"] }

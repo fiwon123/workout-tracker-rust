@@ -119,9 +119,7 @@ pub async fn create(
     if input.name.trim().is_empty() {
         return Err(ApiError::Validation("name is required".into()));
     }
-    if input.exercises.is_empty() {
-        return Err(ApiError::Validation("at least one exercise is required".into()));
-    }
+    validate_exercises(&input.exercises)?;
 
     let mut tx = state.db.begin().await.map_err(internal)?;
 
@@ -137,25 +135,8 @@ pub async fn create(
     .await
     .map_err(internal)?;
 
-    for (i, ex) in input.exercises.iter().enumerate() {
-        if ex.sets <= 0 || ex.reps <= 0 {
-            return Err(ApiError::Validation("sets and reps must be positive".into()));
-        }
-        sqlx::query(
-            "INSERT INTO workout_exercises
-                (workout_id, exercise_id, position, target_sets, target_reps, target_weight)
-             VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(workout_id)
-        .bind(ex.exercise_id)
-        .bind(ex.position.unwrap_or(i as i32))
-        .bind(ex.sets)
-        .bind(ex.reps)
-        .bind(ex.weight)
-        .execute(&mut *tx)
-        .await
-        .map_err(internal)?;
-    }
+    ensure_exercises_exist(&mut tx, &input.exercises).await?;
+    insert_workout_exercises(&mut tx, workout_id, &input.exercises).await?;
 
     tx.commit().await.map_err(internal)?;
 
@@ -167,6 +148,7 @@ pub async fn list(
     Extension(auth): Extension<AuthUser>,
     Query(filter): Query<WorkoutFilter>,
 ) -> Result<Json<Vec<Workout>>, ApiError> {
+        validate_status(&filter.status)?;
         let workouts = sqlx::query_as::<_, Workout>(
             "SELECT id, name, scheduled_at, status, comments, created_at, completed_at
             FROM workouts
@@ -220,28 +202,16 @@ pub async fn update(
     }
 
     if let Some(exercises) = &input.exercises {
+        validate_exercises(exercises)?;
+        ensure_exercises_exist(&mut tx, exercises).await?;
+
         sqlx::query("DELETE FROM workout_exercises WHERE workout_id = $1")
             .bind(id)
             .execute(&mut *tx)
             .await
             .map_err(internal)?;
 
-        for (i, ex) in exercises.iter().enumerate() {
-            sqlx::query(
-                "INSERT INTO workout_exercises
-                    (workout_id, exercise_id, position, target_sets, target_reps, target_weight)
-                 VALUES ($1, $2, $3, $4, $5, $6)",
-            )
-            .bind(id)
-            .bind(ex.exercise_id)
-            .bind(ex.position.unwrap_or(i as i32))
-            .bind(ex.sets)
-            .bind(ex.reps)
-            .bind(ex.weight)
-            .execute(&mut *tx)
-            .await
-            .map_err(internal)?;
-        }
+        insert_workout_exercises(&mut tx, id, exercises).await?;
     }
 
     tx.commit().await.map_err(internal)?;
