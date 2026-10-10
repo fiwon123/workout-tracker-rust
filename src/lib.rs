@@ -18,7 +18,7 @@ struct HealthResponse {
     status: &'static str,
 }
 
-pub async fn health(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
+pub(crate) async fn health(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
     sqlx::query("SELECT 1")
         .execute(&state.db)
         .await

@@ -1,29 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn encode_decode_roundtrip() {
-        let t = encode_token(b"secret", 7, 3, 60).unwrap();
-        let c = decode_token(&t, b"secret").unwrap();
-        assert_eq!(c.sub, 7);
-        assert_eq!(c.ver, 3);
-    }
-
-    #[test]
-    fn wrong_secret_fails() {
-        let t = encode_token(b"secret", 7, 0, 60).unwrap();
-        assert!(decode_token(&t, b"other").is_err());
-    }
-
-    #[test]
-    fn expired_fails() {
-        let t = encode_token(b"secret", 7, 0, -1).unwrap();
-        assert!(decode_token(&t, b"secret").is_err());
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -47,4 +23,29 @@ pub fn decode_token(token: &str, secret: &[u8]) -> Result<Claims, jsonwebtoken::
         &jsonwebtoken::DecodingKey::from_secret(secret),
         &jsonwebtoken::Validation::default(),
     ).map(|d|d.claims)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_decode_roundtrip() {
+        let t = encode_token(b"secret", 7, 3, 60).unwrap();
+        let c = decode_token(&t, b"secret").unwrap();
+        assert_eq!(c.sub, 7);
+        assert_eq!(c.ver, 3);
+    }
+
+    #[test]
+    fn wrong_secret_fails() {
+        let t = encode_token(b"secret", 7, 0, 60).unwrap();
+        assert!(decode_token(&t, b"other").is_err());
+    }
+
+    #[test]
+    fn expired_fails() {
+        let t = encode_token(b"secret", 7, 0, -1).unwrap();
+        assert!(decode_token(&t, b"secret").is_err());
+    }
 }
