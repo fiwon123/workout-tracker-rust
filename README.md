@@ -4,6 +4,8 @@ A RESTful backend for a workout tracker built with Rust (axum), PostgreSQL (sqlx
 
 Users can sign up, log in, create workout plans composed of exercises (sets/reps/weight), schedule them, mark them complete, and generate progress reports.
 
+Project Detail: https://roadmap.sh/projects/fitness-workout-tracker
+
 ## Features
 
 - JWT authentication (HS256) with password hashing (argon2) and token revocation via `token_version`
