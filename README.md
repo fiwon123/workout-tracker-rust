@@ -45,6 +45,22 @@ The API listens on `http://127.0.0.1:3000` by default.
 
 Alternatively, run everything with `docker compose up --build` (db, migrate, app).
 
+## Development with Live Reload
+
+The `dev` compose service runs the API in Docker with `cargo-watch`: it compiles and restarts the app automatically whenever you save a change.
+
+```bash
+docker compose up db dev
+```
+
+- `db` is required; the `app` service and `dev` both bind port 3000, so run one at a time.
+- `dev` bind-mounts `.` into the container, so your local edits are picked up immediately, and runs `migrate` + `seed` (idempotent) on start.
+- Cargo caches (`/app/target`, the crate registry) live in named volumes, so rebuilds after the first one are fast. Drop them with `docker compose down -v` only if you want a truly clean rebuild.
+
+```bash
+docker compose build dev   # rebuild image (e.g. after Dockerfile/Cargo changes)
+```
+
 ## Environment Variables
 
 | Variable       | Default           | Description                              |

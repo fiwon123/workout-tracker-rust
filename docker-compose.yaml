@@ -44,5 +44,33 @@ services:
       retries: 5
       start_period: 20s
 
+  # Development with live reload: `docker compose up db dev`
+  # (do not run `app` and `dev` at the same time - both bind port 3000)
+  dev:
+    build:
+      context: .
+      target: dev
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      LISTEN_ADDR: 0.0.0.0:3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-workout}:${POSTGRES_PASSWORD:-workout_dev_password}@db:5432/${POSTGRES_DB:-workout_tracker}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_TTL_SECS: ${JWT_TTL_SECS:-3600}
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - .:/app
+      - dev_target:/app/target
+      - dev_cargo_registry:/usr/local/cargo/registry
+      - dev_cargo_git:/usr/local/cargo/git
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   postgres_data:
+  dev_target:
+  dev_cargo_registry:
+  dev_cargo_git:

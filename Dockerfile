@@ -1,14 +1,22 @@
-# Build
-FROM rust:1.98-bookworm AS builder
+# Dependencies (cached, rebuilt only when Cargo.toml/Cargo.lock change)
+FROM rust:1.98-bookworm AS deps
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs \
     && cargo build --release --locked && rm -rf src
 
+# Build
+FROM deps AS builder
 COPY src ./src
 COPY migrations ./migrations
 RUN touch src/main.rs && cargo build --release --locked
+
+# Development (live reload via cargo-watch)
+FROM deps AS dev
+RUN cargo install cargo-watch --locked
+EXPOSE 3000
+CMD ["sh", "-c", "cargo run --bin migrate && cargo run --bin seed && cargo watch --ignore target --ignore .git -x run"]
 
 # Run
 FROM debian:bookworm-slim AS final
