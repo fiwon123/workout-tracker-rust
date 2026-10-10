@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn expired_fails() {
-        let t = encode_token(b"secret", 7, 0, -1).unwrap();
+        let t = encode_token(b"secret", 7, 0, -3600).unwrap(); // expired 1h ago (> 60s leeway)
         assert!(decode_token(&t, b"secret").is_err());
     }
 }

@@ -69,7 +69,7 @@ SELECT
   COUNT(DISTINCT w.id) FILTER (WHERE w.status='completed')::bigint AS completed_workouts,
   COUNT(DISTINCT w.id) FILTER (WHERE w.status='pending')::bigint AS pending_workouts,
   COALESCE(SUM(we.target_sets),0)::bigint AS total_sets,
-  COALESCE(SUM(we.target_reps),0)::bigint AS total_reps,
+  COALESCE(SUM(we.target_sets * we.target_reps),0)::bigint AS total_reps,
   COALESCE(SUM(we.target_sets*we.target_reps*we.target_weight),0)::double precision AS total_volume
 FROM workouts w
 LEFT JOIN workout_exercises we ON we.workout_id = w.id
