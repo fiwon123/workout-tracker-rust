@@ -1,6 +1,6 @@
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
-use workout_tracker_rust::{app, AppState};
+use workout_tracker_rust::{AppState, app};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,8 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&database_url)
         .await?;
 
-    let listen_addr =
-        std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+    let listen_addr = std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let listener = tokio::net::TcpListener::bind(&listen_addr).await?;
     tracing::info!("API listening on http://{listen_addr}");
 

@@ -1,6 +1,6 @@
 use axum::{
     extract::{Request, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     middleware::Next,
     response::Response,
 };
@@ -20,8 +20,8 @@ pub async fn require_auth(
     let token = req
         .headers()
         .get(header::AUTHORIZATION)
-        .and_then(|v|v.to_str().ok())
-        .and_then(|v|v.strip_prefix("Bearer "))
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     let secret = std::env::var("JWT_SECRET").map_err(|_| {
@@ -48,7 +48,6 @@ pub async fn require_auth(
     req.extensions_mut().insert(AuthUser {
         user_id: claims.sub,
     });
-    
 
     Ok(next.run(req).await)
 }

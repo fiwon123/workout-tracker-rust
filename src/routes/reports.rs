@@ -1,18 +1,18 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use axum::{
+    Json, Router,
     extract::{Extension, Query, State},
     middleware::from_fn_with_state,
     routing::get,
-    Json, Router,
 };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-use crate::auth::middleware::{require_auth, AuthUser};
-use crate::error::ApiError;
 use crate::AppState;
+use crate::auth::middleware::{AuthUser, require_auth};
+use crate::error::ApiError;
 
-#[derive(Deserialize ,IntoParams)]
+#[derive(Deserialize, IntoParams)]
 pub struct ReportFilter {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,

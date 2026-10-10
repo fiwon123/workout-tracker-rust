@@ -1,17 +1,17 @@
 use axum::{
+    Json, Router,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     routing::{get, post},
-    Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-use crate::auth::middleware::{require_auth, AuthUser};
-use crate::error::ApiError;
 use crate::AppState;
+use crate::auth::middleware::{AuthUser, require_auth};
+use crate::error::ApiError;
 
 #[derive(Deserialize, ToSchema)]
 pub struct WorkoutExerciseInput {
@@ -78,7 +78,6 @@ pub struct CreatedWorkout {
     pub id: i32,
 }
 
-
 fn internal(e: sqlx::Error) -> ApiError {
     tracing::error!("database error: {e}");
     ApiError::Internal
@@ -90,15 +89,15 @@ async fn fetch_workout(
     user_id: i32,
 ) -> Result<WorkoutDetail, ApiError> {
     let workout = sqlx::query_as::<_, Workout>(
-            "SELECT id, name, scheduled_at, status, comments, created_at, completed_at
+        "SELECT id, name, scheduled_at, status, comments, created_at, completed_at
             FROM workouts WHERE id = $1 AND user_id = $2",
-        )
-        .bind(workout_id)
-        .bind(user_id)
-        .fetch_optional(db)
-        .await
-        .map_err(internal)?
-        .ok_or(ApiError::NotFound)?;
+    )
+    .bind(workout_id)
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .map_err(internal)?
+    .ok_or(ApiError::NotFound)?;
 
     let exercises = sqlx::query_as::<_, WorkoutExercise>(
         "SELECT id, exercise_id, position, target_sets, target_reps, target_weight
@@ -168,18 +167,18 @@ pub async fn list(
     Extension(auth): Extension<AuthUser>,
     Query(filter): Query<WorkoutFilter>,
 ) -> Result<Json<Vec<Workout>>, ApiError> {
-        validate_status(&filter.status)?;
-        let workouts = sqlx::query_as::<_, Workout>(
-            "SELECT id, name, scheduled_at, status, comments, created_at, completed_at
+    validate_status(&filter.status)?;
+    let workouts = sqlx::query_as::<_, Workout>(
+        "SELECT id, name, scheduled_at, status, comments, created_at, completed_at
             FROM workouts
             WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)
             ORDER BY scheduled_at ASC",
-        )
-        .bind(auth.user_id)
-        .bind(filter.status)
-        .fetch_all(&state.db)
-        .await
-        .map_err(internal)?;
+    )
+    .bind(auth.user_id)
+    .bind(filter.status)
+    .fetch_all(&state.db)
+    .await
+    .map_err(internal)?;
 
     Ok(Json(workouts))
 }
@@ -335,7 +334,6 @@ pub async fn delete_one(
     Ok(StatusCode::NO_CONTENT)
 }
 
-
 pub fn router(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", post(create).get(list))
@@ -346,11 +344,15 @@ pub fn router(state: AppState) -> Router<AppState> {
 
 fn validate_exercises(exercises: &[WorkoutExerciseInput]) -> Result<(), ApiError> {
     if exercises.is_empty() {
-        return Err(ApiError::Validation("at least one exercise is required".into()));
+        return Err(ApiError::Validation(
+            "at least one exercise is required".into(),
+        ));
     }
     for ex in exercises {
         if ex.sets <= 0 || ex.reps <= 0 {
-            return Err(ApiError::Validation("sets and reps must be positive".into()));
+            return Err(ApiError::Validation(
+                "sets and reps must be positive".into(),
+            ));
         }
         if !ex.weight.is_finite() || ex.weight < 0.0 {
             return Err(ApiError::Validation("weight must be >= 0".into()));

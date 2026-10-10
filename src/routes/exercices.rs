@@ -1,12 +1,12 @@
 use axum::{
+    Json, Router,
     extract::{Query, State},
     routing::get,
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-use crate::{error::ApiError, AppState};
+use crate::{AppState, error::ApiError};
 
 #[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct Exercise {
@@ -18,8 +18,8 @@ pub struct Exercise {
 }
 
 #[derive(Deserialize, IntoParams)]
-pub struct ExerciseFilter{
-    pub category:Option<String>,
+pub struct ExerciseFilter {
+    pub category: Option<String>,
     pub muscle_group: Option<String>,
 }
 
@@ -33,7 +33,7 @@ pub async fn list_exercises(
     Query(filter): Query<ExerciseFilter>,
 ) -> Result<Json<Vec<Exercise>>, ApiError> {
     let exercises = sqlx::query_as::<_, Exercise>(
-    "SELECT id, name, description, category, muscle_group
+        "SELECT id, name, description, category, muscle_group
          FROM exercises
          WHERE ($1::text IS NULL OR category = $1)
             AND ($2::text IS NULL OR muscle_group = $2)

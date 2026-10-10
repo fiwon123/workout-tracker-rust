@@ -15,26 +15,56 @@ async fn summary_reflects_completed_workout(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
-    let res = app.clone().oneshot(json_req(
-        "POST", "/auth/signup", None,
-        serde_json::json!({"email": "r@x.com", "password": "password1"}),
-    )).await.unwrap();
+    let res = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/auth/signup",
+            None,
+            serde_json::json!({"email": "r@x.com", "password": "password1"}),
+        ))
+        .await
+        .unwrap();
     let token = read_json(res).await["token"].as_str().unwrap().to_string();
 
-    let create = app.clone().oneshot(json_req("POST", "/workouts", Some(&token), serde_json::json!({
-        "name": "Push day",
-        "scheduled_at": "2030-01-02T10:00:00Z",
-        "comments": "",
-        "exercises": [{"exercise_id": ex, "sets": 3, "reps": 10, "weight": 50.0}]
-    }))).await.unwrap();
+    let create = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/workouts",
+            Some(&token),
+            serde_json::json!({
+                "name": "Push day",
+                "scheduled_at": "2030-01-02T10:00:00Z",
+                "comments": "",
+                "exercises": [{"exercise_id": ex, "sets": 3, "reps": 10, "weight": 50.0}]
+            }),
+        ))
+        .await
+        .unwrap();
     let id = read_json(create).await["id"].as_i64().unwrap() as i32;
 
-    let comp = app.clone().oneshot(json_req("POST", &format!("/workouts/{id}/complete"), Some(&token), serde_json::json!({})))
-        .await.unwrap();
+    let comp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            &format!("/workouts/{id}/complete"),
+            Some(&token),
+            serde_json::json!({}),
+        ))
+        .await
+        .unwrap();
     assert_eq!(comp.status(), StatusCode::OK);
 
-    let sum = app.oneshot(json_req("GET", "/reports/summary", Some(&token), serde_json::json!({})))
-        .await.unwrap();
+    let sum = app
+        .oneshot(json_req(
+            "GET",
+            "/reports/summary",
+            Some(&token),
+            serde_json::json!({}),
+        ))
+        .await
+        .unwrap();
     assert_eq!(sum.status(), StatusCode::OK);
     let body = read_json(sum).await;
     let totals = &body["totals"];
@@ -45,5 +75,5 @@ async fn summary_reflects_completed_workout(pool: sqlx::PgPool) {
     assert_eq!(totals["total_reps"], 30);
     assert_eq!(totals["total_volume"], 1500.0);
     assert_eq!(body["by_muscle_group"][0]["muscle_group"], "chest");
-    assert!(body["weekly_frequency"].as_array().unwrap().len() >= 1);
+    assert!(!body["weekly_frequency"].as_array().unwrap().is_empty());
 }

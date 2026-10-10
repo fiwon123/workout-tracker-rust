@@ -1,16 +1,16 @@
+use crate::error::ApiError;
 use axum::{
+    Json, Router,
     extract::{Extension, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     routing::post,
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use crate::error::ApiError;
 use utoipa::ToSchema;
 
-use crate::auth::{middleware::require_auth, middleware::AuthUser, password, token};
 use crate::AppState;
+use crate::auth::{middleware::AuthUser, middleware::require_auth, password, token};
 
 #[derive(Deserialize, ToSchema)]
 pub struct Credentials {
@@ -22,8 +22,6 @@ pub struct Credentials {
 pub struct AuthResponse {
     pub token: String,
 }
-
-
 
 fn validate(email: &str, password: &str) -> Result<(), ApiError> {
     if !email.contains('@') || email.len() < 5 {
@@ -48,9 +46,9 @@ fn jwt_secret() -> Result<Vec<u8>, ApiError> {
 
 fn jwt_ttl() -> i64 {
     std::env::var("JWT_TTL_SECS")
-                    .ok()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(3600)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3600)
 }
 
 #[utoipa::path(
@@ -68,7 +66,7 @@ pub async fn signup(
 ) -> Result<(StatusCode, Json<AuthResponse>), ApiError> {
     validate(&creds.email, &creds.password)?;
 
-    let hash = password::hash_password(&creds.password).map_err(|e|{
+    let hash = password::hash_password(&creds.password).map_err(|e| {
         tracing::error!("hashing failed: {e}");
         ApiError::Internal
     })?;
@@ -89,13 +87,12 @@ pub async fn signup(
 
     let (user_id, ver) = row.ok_or(ApiError::EmailTaken)?;
 
-    let token = token::encode_token(&jwt_secret()?, user_id, ver, jwt_ttl())
-            .map_err(|e| {
-                tracing::error!("token encode failed: {e}");
-                ApiError::Internal
-            })?;
+    let token = token::encode_token(&jwt_secret()?, user_id, ver, jwt_ttl()).map_err(|e| {
+        tracing::error!("token encode failed: {e}");
+        ApiError::Internal
+    })?;
 
-    Ok((StatusCode::CREATED, Json(AuthResponse {token})))
+    Ok((StatusCode::CREATED, Json(AuthResponse { token })))
 }
 
 #[utoipa::path(
@@ -126,11 +123,10 @@ pub async fn login(
         return Err(ApiError::InvalidCredentials);
     }
 
-    let token = token::encode_token(&jwt_secret()?, user_id, ver, jwt_ttl())
-        .map_err(|e| {
-            tracing::error!("token encode failed: {e}");
-            ApiError::Internal
-        })?;
+    let token = token::encode_token(&jwt_secret()?, user_id, ver, jwt_ttl()).map_err(|e| {
+        tracing::error!("token encode failed: {e}");
+        ApiError::Internal
+    })?;
 
     Ok(Json(AuthResponse { token }))
 }
@@ -158,7 +154,6 @@ pub async fn logout(
 
     Ok(StatusCode::NO_CONTENT)
 }
-
 
 pub fn router(state: AppState) -> Router<AppState> {
     Router::new()

@@ -32,10 +32,18 @@ async fn signup_login_and_protected_route(pool: sqlx::PgPool) {
         .await
         .unwrap();
     assert_eq!(login.status(), StatusCode::OK);
-    let token = read_json(login).await["token"].as_str().unwrap().to_string();
+    let token = read_json(login).await["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let ok = test_app(pool.clone())
-        .oneshot(json_req("GET", "/workouts", Some(&token), serde_json::json!({})))
+        .oneshot(json_req(
+            "GET",
+            "/workouts",
+            Some(&token),
+            serde_json::json!({}),
+        ))
         .await
         .unwrap();
     assert_eq!(ok.status(), StatusCode::OK);

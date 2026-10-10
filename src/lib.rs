@@ -1,12 +1,12 @@
 pub mod auth;
 pub mod error;
-pub mod routes;
 pub mod openapi;
+pub mod routes;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
 use sqlx::PgPool;
-use utoipa::OpenApi; 
+use utoipa::OpenApi;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -18,7 +18,9 @@ struct HealthResponse {
     status: &'static str,
 }
 
-pub(crate) async fn health(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
+pub(crate) async fn health(
+    State(state): State<AppState>,
+) -> Result<Json<HealthResponse>, StatusCode> {
     sqlx::query("SELECT 1")
         .execute(&state.db)
         .await
