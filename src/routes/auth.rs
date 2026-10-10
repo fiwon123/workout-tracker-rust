@@ -7,17 +7,18 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use crate::error::ApiError;
+use utoipa::ToSchema;
 
 use crate::auth::{middleware::require_auth, middleware::AuthUser, password, token};
 use crate::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct Credentials {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct AuthResponse {
     pub token: String,
 }
@@ -52,6 +53,15 @@ fn jwt_ttl() -> i64 {
                     .unwrap_or(3600)
 }
 
+#[utoipa::path(
+    post, path = "/auth/signup", tag = "auth",
+    request_body = Credentials,
+    responses(
+        (status = 201, body = AuthResponse),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Email already registered"),
+    )
+)]
 pub async fn signup(
     State(state): State<AppState>,
     Json(creds): Json<Credentials>,
@@ -88,6 +98,14 @@ pub async fn signup(
     Ok((StatusCode::CREATED, Json(AuthResponse {token})))
 }
 
+#[utoipa::path(
+    post, path = "/auth/login", tag = "auth",
+    request_body = Credentials,
+    responses(
+        (status = 200, body = AuthResponse),
+        (status = 401, description = "Invalid credentials"),
+    )
+)]
 pub async fn login(
     State(state): State<AppState>,
     Json(creds): Json<Credentials>,
@@ -117,6 +135,14 @@ pub async fn login(
     Ok(Json(AuthResponse { token }))
 }
 
+#[utoipa::path(
+    post, path = "/auth/logout", tag = "auth",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 204, description = "Logged out"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn logout(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,

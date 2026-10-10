@@ -6,18 +6,19 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::middleware::{require_auth, AuthUser};
 use crate::error::ApiError;
 use crate::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize ,IntoParams)]
 pub struct ReportFilter {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct Totals {
     pub total_workouts: i64,
     pub completed_workouts: i64,
@@ -27,7 +28,7 @@ pub struct Totals {
     pub total_volume: f64,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct MuscleGroupStats {
     pub muscle_group: String,
     pub workouts: i64,
@@ -35,7 +36,7 @@ pub struct MuscleGroupStats {
     pub volume: f64,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct CategoryStats {
     pub category: String,
     pub workouts: i64,
@@ -43,13 +44,13 @@ pub struct CategoryStats {
     pub volume: f64,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct WeeklyFrequency {
     pub week_start: DateTime<Utc>,
     pub workouts: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ReportSummary {
     pub totals: Totals,
     pub by_muscle_group: Vec<MuscleGroupStats>,
@@ -76,6 +77,15 @@ WHERE w.user_id = $1
   AND ($2::timestamptz IS NULL OR w.scheduled_at >= $2)
   AND ($3::timestamptz IS NULL OR w.scheduled_at <= $3)";
 
+#[utoipa::path(
+    get, path = "/reports/summary", tag = "reports",
+    params(ReportFilter),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = ReportSummary),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn summary(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,

@@ -7,12 +7,13 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::middleware::{require_auth, AuthUser};
 use crate::error::ApiError;
 use crate::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct WorkoutExerciseInput {
     pub exercise_id: i32,
     pub sets: i32,
@@ -22,7 +23,7 @@ pub struct WorkoutExerciseInput {
     pub position: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateWorkout {
     pub name: String,
     pub scheduled_at: DateTime<Utc>,
@@ -31,7 +32,7 @@ pub struct CreateWorkout {
     pub exercises: Vec<WorkoutExerciseInput>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct UpdateWorkout {
     pub name: Option<String>,
     pub scheduled_at: Option<DateTime<Utc>>,
@@ -39,12 +40,12 @@ pub struct UpdateWorkout {
     pub exercises: Option<Vec<WorkoutExerciseInput>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct WorkoutFilter {
     pub status: Option<String>,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct Workout {
     pub id: i32,
     pub name: String,
@@ -55,7 +56,7 @@ pub struct Workout {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct WorkoutExercise {
     pub id: i32,
     pub exercise_id: i32,
@@ -65,14 +66,14 @@ pub struct WorkoutExercise {
     pub target_weight: f64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct WorkoutDetail {
     #[serde(flatten)]
     pub workout: Workout,
     pub exercises: Vec<WorkoutExercise>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CreatedWorkout {
     pub id: i32,
 }
@@ -111,6 +112,16 @@ async fn fetch_workout(
     Ok(WorkoutDetail { workout, exercises })
 }
 
+#[utoipa::path(
+    post, path = "/workouts", tag = "workouts",
+    request_body = CreateWorkout,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 201, body = CreatedWorkout),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn create(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,
@@ -143,6 +154,15 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(CreatedWorkout { id: workout_id })))
 }
 
+#[utoipa::path(
+    get, path = "/workouts", tag = "workouts",
+    params(WorkoutFilter),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = [Workout]),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,
@@ -164,6 +184,16 @@ pub async fn list(
     Ok(Json(workouts))
 }
 
+#[utoipa::path(
+    get, path = "/workouts/{id}", tag = "workouts",
+    params(("id" = i32, Path, description = "Workout id")),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = WorkoutDetail),
+        (status = 404, description = "Not found"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn get_one(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,
@@ -172,6 +202,17 @@ pub async fn get_one(
     Ok(Json(fetch_workout(&state.db, id, auth.user_id).await?))
 }
 
+#[utoipa::path(
+    patch, path = "/workouts/{id}", tag = "workouts",
+    params(("id" = i32, Path, description = "Workout id")),
+    request_body = UpdateWorkout,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = WorkoutDetail),
+        (status = 404, description = "Not found"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn update(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,
@@ -219,6 +260,17 @@ pub async fn update(
     Ok(Json(fetch_workout(&state.db, id, auth.user_id).await?))
 }
 
+#[utoipa::path(
+    post, path = "/workouts/{id}/complete", tag = "workouts",
+    params(("id" = i32, Path, description = "Workout id")),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = Workout),
+        (status = 404, description = "Not found"),
+        (status = 409, description = "Workout already completed"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn complete(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,
@@ -254,6 +306,16 @@ pub async fn complete(
     }
 }
 
+#[utoipa::path(
+    delete, path = "/workouts/{id}", tag = "workouts",
+    params(("id" = i32, Path, description = "Workout id")),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 404, description = "Not found"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn delete_one(
     State(state): State<AppState>,
     Extension(auth): Extension<AuthUser>,

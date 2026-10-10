@@ -4,10 +4,11 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{error::ApiError, AppState};
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, ToSchema)]
 pub struct Exercise {
     pub id: i32,
     pub name: String,
@@ -16,12 +17,17 @@ pub struct Exercise {
     pub muscle_group: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct ExerciseFilter{
     pub category:Option<String>,
     pub muscle_group: Option<String>,
 }
 
+#[utoipa::path(
+    get, path = "/exercises", tag = "exercises",
+    params(ExerciseFilter),
+    responses((status = 200, body = [Exercise]))   // [] = array
+)]
 pub async fn list_exercises(
     State(state): State<AppState>,
     Query(filter): Query<ExerciseFilter>,
